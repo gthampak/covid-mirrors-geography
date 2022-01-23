@@ -1,5 +1,7 @@
 # GroupJ-COVID
 
+(inspired by Genes mirror geography within Europe; https://www.nature.com/articles/nature07331)
+
 ## Possible Directions (last updated: 11/23/2021)
 
 ### things we can do
