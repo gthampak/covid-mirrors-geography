@@ -1,0 +1,179 @@
+---
+title: "COVID-EDA-Guy"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, fig.align = "center")
+options(digits=5, pillar.sigfig = 7)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(gganimate)
+```
+
+## Import John Hopkins Covid Dataset from 12/5/2021 named `covid`
+
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/covid-12-5-2021?token=AST7DELZDJCUNN4DQ752EDLBXAASG")
+
+# change date to date variable
+covid <- covid %>%
+  mutate(date = as.Date(date))
+```
+
+## Creating Sub-datasets
+
+#### `covid_numeric` : Only numeric variables (and iso_code, location, date, continent)
+
+```{r}
+#select only numeric variables (outside of iso_code, location, and date)
+covid_numeric <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select_if(is.numeric)
+)
+```
+
+### `covid_pm` : Only variables that end in per_million (and iso_code, location, date, continent)
+
+```{r}
+covid_pm <- cbind(
+  covid %>%
+    select(iso_code, location, date),
+  covid %>%
+    select(ends_with("per_million"))
+)
+```
+
+### `covid_spm` : Only variables that end with smoothed_per_million (and iso_code, location, date)
+
+```{r}
+covid_spm <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select(ends_with("smoothed_per_million"))
+)
+```
+
+#### `covid_spm_location` : (pivot wider)
+
+```{r}
+covid_spm_location <- covid_spm %>%
+  pivot_wider(names_from = date, values_from = !c(iso_code, date, location, continent)) %>%
+  replace_all_na()
+```
+
+```{r}
+covid_spm_location_km <- covid_spm_location %>%
+  select(is.numeric) %>%
+  replace_all_na()
+
+set.seed(47)
+covid_spm_location_kclust <- covid_spm_location_km %>%
+  kmeans(centers = 3)
+```
+
+##### Tuning k in k-means
+
+```{r}
+set.seed(47)
+kmax <- 30
+covid_kclusts <- 
+  tibble(k = 1:kmax) %>%
+  mutate(
+    covid_kclust = map(k, ~kmeans(covid_spm_location_km, .x)),
+    tidied = map(covid_kclust, tidy),
+    glanced = map(covid_kclust, glance),
+    augmented = map(covid_kclust, augment, covid_spm_location_km)
+  )
+```
+
+```{r}
+clusters <- 
+  covid_kclusts %>%
+  unnest(cols = c(tidied))
+
+assignments <- 
+  covid_kclusts %>% 
+  unnest(cols = c(augmented))
+
+clusterings <- 
+  covid_kclusts %>%
+  unnest(cols = c(glanced))
+```
+
+```{r}
+clusterings %>%
+  ggplot(aes(x = k, y = tot.withinss)) + 
+  geom_line() + 
+  geom_point() + ylab("") +
+  ggtitle("Total Within Sum of Squares")
+```
+
+## Functions
+
+#### `filter_continents` : filter covid dataset with `continent` variable for only sevon seperate continents 
+
+```{r}
+filter_continents <- function(covid_data) {
+   covid_data <- covid_data %>%
+     filter(continent == "Asia" |
+           continent == "Africa" |
+           continent == "Europe" |
+           continent == "North America" |
+           continent == "Oceania" |
+           continent == "South America" |
+           continent == "Antarctica"
+           )
+}
+
+replace_all_na <- function(covid_data) {
+  covid_data %>%
+    replace(is.na(.), 0)
+}
+```
+
+## EDA - Visualizations
+
+#### New cases Smooth Per Million Over Time By Continent
+
+```{r}
+covid_spm %>%
+  filter_continents %>%
+  filter_world %>%
+  filter(continent == "Asia") %>%
+  ggplot(aes(x = date, y = new_cases_smoothed_per_million)) +
+  geom_line() +
+  geom_line(aes(color = location), show.legend = FALSE)
+```
+
+## Misc/EXperiments
+
+```{r}
+table(covid$location)
+```
+
+```{r}
+library(tidyverse)
+library(tidymodels)
+library(palmerpenguins)
+data(penguins)
+
+penguins_km <- penguins %>%
+  drop_na(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g) %>%
+  select(bill_length_mm, bill_depth_mm, flipper_length_mm, body_mass_g) %>%
+  mutate(across(bill_length_mm:body_mass_g, scale))
+
+set.seed(47)
+penguin_kclust <- penguins_km %>%
+  kmeans(centers = 3)
+
+penguin_kclust
+```
+
+----------------------

@@ -1,0 +1,324 @@
+---
+title: "COVID-EDA-Guy"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, fig.align = "center")
+options(digits=5, pillar.sigfig = 7)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(gganimate)
+```
+
+## Import Longitude-Latitude Dataset
+
+```{r}
+lats_long <- read.csv("https://raw.githubusercontent.com/albertyw/avenews/master/old/data/average-latitude-longitude-countries.csv")
+```
+
+```{r}
+lats_long <- lats_long %>%
+  rename(location = Country)
+```
+
+## Import John Hopkins Covid Dataset from 12/5/2021 named `covid`
+
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/covid-12-5-2021?token=AST7DELZDJCUNN4DQ752EDLBXAASG")
+
+# change date to date variable
+covid <- covid %>%
+  mutate(date = as.Date(date))
+```
+
+## Functions
+
+#### `filter_continents` : filter covid dataset with `continent` variable for only seven seperate continents 
+
+```{r}
+filter_continents <- function(covid_data) {
+   covid_data <- covid_data %>%
+     filter(continent == "Asia" |
+           continent == "Africa" |
+           continent == "Europe" |
+           continent == "North America" |
+           continent == "Oceania" |
+           continent == "South America" |
+           continent == "Antarctica"
+           )
+}
+```
+
+#### `only_countries` : filter covid dataset with `continent` variable for only sevon seperate continents 
+
+
+```{r}
+filter_world <- function(covid_data) {
+  covid_data <- covid_data %>%
+    filter(location != "World" |
+           location != "Asia" |
+           location != "Africa" |
+           location != "Europe" |
+           location != "North America" |
+           location != "Oceania" |
+           location != "South America" |
+           location != "Antarctica"
+           )
+}
+```
+
+#### `replace_all_na` : replaces all `NA`'s in a dataframe with 0s
+
+```{r}
+replace_all_na <- function(covid_data) {
+  covid_data %>%
+    replace(is.na(.), 0)
+}
+```
+
+```{r}
+replace_0s_w1s <- function(covid_data) {
+  covid_data %>%
+    replace(.==(0), 1)
+}
+```
+
+## Creating Sub-datasets
+
+#### `covid_latest` : Only data from latest date (2020-)
+
+```{r}
+covid_latest <- covid %>%
+  filter(date == max(date))
+```
+
+#### `covid_numeric` : Only numeric variables (and iso_code, location, date, continent)
+
+```{r}
+#select only numeric variables (outside of iso_code, location, and date)
+covid_numeric <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select_if(is.numeric)
+)
+```
+
+### `covid_per` : Only variables that containing `per` (and iso_code, location, date, continent)
+
+```{r}
+covid_per <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent, population),
+  covid %>%
+    select(contains("per"))
+)
+```
+
+### `covid_pm` : Only variables that end in per_million (and iso_code, location, date, continent)
+
+```{r}
+covid_pm <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select(ends_with("per_million"))
+) %>%
+  replace_all_na()
+```
+
+### `covid_spm` : Only variables that end with smoothed_per_million (and iso_code, location, date)
+
+```{r}
+covid_spm <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select(ends_with("smoothed_per_million"))
+)
+```
+
+#### `covid_spm_location` : (pivot wider)
+
+```{r}
+covid_spm_location <- covid_spm %>%
+  pivot_wider(names_from = date, values_from = !c(iso_code, date, location, continent)) %>%
+  replace_all_na()
+```
+
+## EDA - Visualizations
+
+#### New cases Per Million Over Time By Continent
+
+```{r}
+covid_pm %>%
+  filter_continents %>%
+  filter_world %>%
+  ggplot(aes(x = date, y = new_cases_per_million)) +
+  geom_line(aes(color = location), show.legend = FALSE) + 
+  facet_wrap(~continent) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+covid_pm %>%
+  filter_continents %>%
+  filter_world %>%
+  ggplot(aes(x = date, y = new_cases_per_million)) +
+  geom_line(aes(color = continent), show.legend = FALSE) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+#### Approximate excess mortality per million over time throughout covid
+
+```{r}
+covid_pm %>%
+  filter_continents %>%
+  ggplot(aes(x = date, y = excess_mortality_cumulative_per_million)) +
+  geom_smooth(aes(color = continent), se = FALSE)
+```
+
+#### HDI-covid plots
+
+```{r}
+# data
+
+HDI_2020 <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/World_Bank_2020_HDI.csv?token=AST7DELBTYIJUK2GTQ7TXNDBXOZWA")
+
+HDI_2020 <- HDI_2020 %>%
+  rename(location = ï..Country.Name) %>%
+  rename(HDI = X2020)
+
+covid_latest_hdi <- left_join(covid_latest, HDI_2020, by = "location")
+
+covid_latest_hdi <- covid_latest_hdi %>%
+  filter(!is.na(HDI)) %>%
+  arrange(desc(HDI))
+
+covid_pm_hdi <- left_join(covid_pm, HDI_2020, by = "location") %>%
+  filter(!is.na(HDI))
+```
+
+```{r}
+covid_latest_hdi %>%
+  ggplot(aes(x = HDI, y = total_cases_per_million)) +
+  geom_point(aes(color = continent)) +
+  geom_smooth(se = FALSE)
+```
+
+```{r}
+covid_latest_hdi %>%
+  ggplot(aes(x = HDI, y = total_cases_per_million)) +
+  geom_point(aes(color = continent)) +
+  facet_wrap(~continent) +
+  geom_smooth(method = "lm", se = FALSE)
+```
+
+```{r}
+library(gapminder)
+```
+
+```{r}
+hdi_animate <- ggplot(covid_pm_hdi, aes(HDI, total_cases_per_million, color = location)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  facet_wrap(~continent) +
+  labs(title = 'Date: {frame_time}', x = 'HDI', y = 'total_cases_per_million') +
+  transition_time(date) +
+  ease_aes('linear') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+animate(hdi_animate, duration = 10)
+```
+
+#### Tourism-covid plots
+
+```{r}
+# data
+inter_arrivals <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/World_Bank_International_Arrival.csv?token=AST7DEIUKOA6UO5AO6ETDVDBXO4M2")
+
+IA_2019 <- inter_arrivals %>%
+  rename(location = ï..Country.Name) %>%
+  rename(inter_arrivals = X2019) %>%
+  select(location, inter_arrivals)
+
+covid_pm_IA <- left_join(covid_pm, IA_2019, by = "location")
+
+covid_pm_IA <- covid_pm_IA %>%
+  filter(date == max(date)) %>%
+  filter(!is.na(inter_arrivals)) %>%
+  arrange(desc(inter_arrivals))
+```
+
+```{r}
+covid_pm_IA %>%
+  ggplot(aes(x = inter_arrivals, y = total_cases_per_million)) +
+  geom_point(aes(color = continent)) +
+  geom_smooth(se = FALSE)
+```
+
+```{r}
+covid_pm_IA %>%
+  ggplot(aes(x = inter_arrivals, y = total_cases_per_million)) +
+  geom_point(aes(color = continent)) +
+  facet_wrap(~continent, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+```{r}
+covid_pm_IA %>%
+  filter(continent == "Africa") %>%
+  ggplot(aes(x = inter_arrivals, y = total_cases_per_million)) +
+  geom_point(aes(color = location)) +
+  facet_wrap(~continent, scales = "free") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust=1))
+```
+
+#### GDP
+
+```{r}
+gdp <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/World_Bank_gdp_per_capita.csv?token=AST7DEMK7QPXWCAXKX35FXDBXPJOG")
+
+gdp_2019 <- gdp %>%
+  rename(location = ï..Country.Name) %>%
+  rename(gdp = X2019) %>%
+  select(location, gdp)
+
+covid_per_gdp <- left_join(covid_per, gdp_2019, by = "location")
+
+covid_per_gdp_latest <- covid_per_gdp %>%
+  filter(date == max(date)) %>%
+  filter(!is.na(gdp))
+```
+
+```{r}
+covid_per_gdp_latest %>%
+  filter(!is.na(total_vaccinations_per_hundred)) %>%
+  filter_continents() %>%
+  filter_world() %>%
+  mutate(gdp = log(gdp)) %>%
+  mutate(vax = if_else(total_vaccinations_per_hundred == 0, "no", "yes")) %>%
+  ggplot(aes(x = gdp, y = total_vaccinations_per_hundred)) +
+  geom_point(aes(color = continent)) +
+  geom_smooth(method = "lm", se = FALSE) +
+  geom_text(aes(label=location),hjust=0, vjust=0, size = 3) +
+  xlab("log(gdp per capita)")
+```
+
+## Misc/Experiments
+
+----------------------
+
+
+
+
+
+
+
+
+

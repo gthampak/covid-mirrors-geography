@@ -1,0 +1,297 @@
+---
+title: "jared_is_back2"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, fig.align = "center")
+options(digits=5, pillar.sigfig = 7)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+library(gganimate)
+library(gapminder)
+```
+
+## Import Longitude-Latitude Dataset
+
+```{r}
+lats_long <- read.csv("https://raw.githubusercontent.com/albertyw/avenews/master/old/data/average-latitude-longitude-countries.csv")
+```
+
+```{r}
+lats_long <- lats_long %>%
+  rename(location = Country)
+```
+
+## Import John Hopkins Covid Dataset from 12/5/2021 named `covid`
+
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/covid-12-5-2021?token=AST7DELZDJCUNN4DQ752EDLBXAASG")
+
+# change date to date variable
+covid <- covid %>%
+  mutate(date = as.Date(date))
+
+# add longitude-latitude to covid dataset
+covid <- left_join(covid, lats_long, by = "location")
+```
+
+## Functions
+
+#### `filter_continents` : filter covid dataset with `continent` variable for only sevon seperate continents 
+
+```{r}
+filter_continents <- function(covid_data) {
+   covid_data <- covid_data %>%
+     filter(continent == "Asia" |
+           continent == "Africa" |
+           continent == "Europe" |
+           continent == "North America" |
+           continent == "Oceania" |
+           continent == "South America" |
+           continent == "Antarctica"
+           )
+}
+```
+
+#### `only_countries` : filter covid dataset with `continent` variable for only sevon seperate continents 
+
+```{r}
+filter_world <- function(covid_data) {
+  covid_data <- covid_data %>%
+    filter(location != "World" |
+           location != "Asia" |
+           location != "Africa" |
+           location != "Europe" |
+           location != "North America" |
+           location != "Oceania" |
+           location != "South America" |
+           location != "Antarctica"
+           )
+}
+```
+
+#### `replace_all_na` : replaces all `NA`'s in a dataframe with 0s
+
+```{r}
+replace_all_na <- function(covid_data) {
+  covid_data %>%
+    replace(is.na(.), 0)
+}
+```
+
+## Creating Sub-datasets
+
+#### `covid_numeric` : Only numeric variables (and iso_code, location, date, continent)
+
+```{r}
+#select only numeric variables (outside of iso_code, location, and date)
+covid_numeric <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select_if(is.numeric)
+)
+```
+
+### `covid_per` : Only variables that containing `per` (and iso_code, location, date, continent)
+
+```{r}
+covid_per <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent, population),
+  covid %>%
+    select(contains("per"))
+)
+```
+
+### `covid_pm` : Only variables that end in per_million (and iso_code, location, date, continent)
+
+```{r}
+covid_pm <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent, population),
+  covid %>%
+    select(ends_with("per_million"))
+)
+```
+
+### `covid_spm` : Only variables that end with smoothed_per_million (and iso_code, location, date)
+
+```{r}
+covid_spm <- cbind(
+  covid %>%
+    select(iso_code, location, date, continent),
+  covid %>%
+    select(ends_with("smoothed_per_million"))
+)
+```
+
+#### `covid_spm_location` : (pivot wider)
+
+```{r}
+covid_spm_location <- covid_spm %>%
+  pivot_wider(names_from = date, values_from = !c(iso_code, date, location, continent)) %>%
+  replace_all_na()
+```
+
+## EDA - Visualizations
+
+#### New cases Smooth Per Million Over Time By Continent
+```{r}
+covid_spm %>% head()
+```
+
+
+```{r}
+covid_spm %>%
+  filter_continents %>%
+  ggplot(aes(x = date, y = new_cases_smoothed_per_million, color=location)) +
+  geom_line(aes(color = location), show.legend = FALSE) +
+  facet_wrap(~continent) +
+  scale_colour_manual(values = country_colors)
+
+```
+
+```{r}
+covid_spm %>%
+  filter_continents %>%
+  ggplot(aes(x = date, y = new_deaths_smoothed_per_million, color=location)) +
+  geom_line(aes(color = location), show.legend = FALSE) +
+  facet_wrap(~continent) +
+  scale_colour_manual(values = country_colors)
+
+```
+
+```{r}
+covid_spm %>%
+  filter_continents %>%
+  ggplot(aes(x = date, y = new_vaccinations_smoothed_per_million, color=location)) +
+  geom_line(aes(color = location), show.legend = FALSE) +
+  facet_wrap(~continent) +
+  scale_colour_manual(values = country_colors)
+
+```
+
+
+## Misc/Experiments
+
+
+#### gganimate example
+
+```{r}
+covid_spm1 <- covid_spm %>%
+  replace_all_na() %>%
+  filter_world()
+
+covid_pm1 <- covid_pm %>%
+  replace_all_na() %>%
+  filter_world() %>%
+  filter_continents()
+```
+
+```{r}
+ggplot(covid_pm1, aes(total_cases_per_million, total_deaths_per_million, color = location, size = population)) +
+  #geom_point(alpha = 0.7, show.legend = FALSE) +
+  geom_smooth(size=0.5, se=FALSE, show.legend=FALSE) +
+  facet_wrap(~continent) +
+  scale_color_manual(values = country_colors)
+
+```
+
+```{r, eval=FALSE}
+cases_death_animate <- ggplot(covid_pm1, aes(total_cases_per_million, total_deaths_per_million, color = location, size = population)) +
+  geom_point(alpha = 0.7, show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(2, 12)) +
+  facet_wrap(~continent) +
+  labs(title = 'Date: {frame_time}', x = 'Total Cases per Million', y = 'Total Deaths per Million') +
+  transition_time(date) +
+  ease_aes('linear') +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+
+animate(cases_death_animate, duration = 10)
+```
+
+
+
+
+#### gganimate experiment
+
+##### cases per million
+```{r}
+world <- map_data("world")
+```
+
+```{r}
+map <- ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "black", fill = "lightgray", size = 0.01
+  ) +
+  geom_point(data = covid, aes(Longitude, Latitude, color=location, size=total_cases_per_million), show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(0.1,5))
+  
+map
+```
+
+
+```{r, eval=FALSE}
+map_anim <- ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "black", fill = "lightgray", size = 0.01
+  ) +
+  geom_point(data = covid, aes(Longitude, Latitude, color=location, size=total_cases_per_million), show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(0.1, 5)) +
+  transition_time(date)
+
+animate(map_anim, duration = 10)
+```
+
+
+
+#### cases total
+```{r}
+map <- ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "black", fill = "lightgray", size = 0.01
+  ) +
+  geom_point(data = covid, aes(Longitude, Latitude, color=location, size=total_cases), show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(1, 15))
+  
+map
+```
+
+```{r, eval=FALSE}
+anim_map_total_cases <- ggplot() +
+  geom_map(
+    data = world, map = world,
+    aes(long, lat, map_id = region),
+    color = "black", fill = "lightgray", size = 0.01
+  ) +
+  geom_point(data = covid, aes(Longitude, Latitude, color=location, size=total_cases), show.legend = FALSE) +
+  scale_color_manual(values = country_colors) +
+  scale_size(range = c(1, 15)) +
+  transition_time(date)
+
+animate(anim_map_total_cases, duration=10)
+```
+
+
+
+
+
+
+
+

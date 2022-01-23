@@ -1,0 +1,23 @@
+---
+title: "Covid Mirrors Geography - R"
+output:
+  pdf_document: default
+  html_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, fig.align = "center")
+options(digits=5, pillar.sigfig = 7)
+
+#libraries go here
+```
+
+# Under Data = Exploratory Data Analysis
+
+```{r}
+
+
+
+```
+
+# Under Results

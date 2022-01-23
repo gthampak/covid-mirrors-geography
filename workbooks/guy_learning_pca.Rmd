@@ -1,0 +1,75 @@
+---
+title: "guy_learning_pca"
+author: "Guy Thampakkul"
+date: 'due: Thursday, November 18, 2021'
+output:
+  pdf_document: 
+    latex_engine: xelatex
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, message=FALSE, warning=FALSE, cache=TRUE, 
+                      fig.width=4, fig.height=4, fig.align = "center")
+options(digits=5, pillar.sigfig = 7)
+library(tidyverse)
+library(tidymodels)
+library(dplyr)
+```
+
+```{r}
+CHN <- read.csv("https://raw.githubusercontent.com/ST47S-CompStats-Fall2021/GroupJ-COVID/main/data/API_CHN_1960_2005_misc_clean.csv?token=AST7DEPAEP4TQMUDNUFJ6UTBTQT4W")
+```
+
+```{r}
+library(corrr)
+```
+
+```{r}
+CHN <- CHN %>%
+  select(-c(X, Country.Name, Country.Code, Indicator.Description))
+
+CHN_trans <- data.frame(t(CHN[-1]))
+colnames(CHN_trans) <- CHN[, 1]
+```
+
+```{r}
+CHN_corr <- CHN_trans %>%
+  select(where(is.numeric)) %>%
+  correlate() %>%
+  arrange()
+
+CHN_corr
+```
+
+
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
+```
+
+```{r}
+covid_cont <- covid %>%
+  filter(location == "Asia" |
+           location == "Africa" |
+           location == "Europe" |
+           location == "North America" |
+           location == "South America" |
+           location == "Oceania")
+```
+
+```{r}
+covid_cont %>%
+  ggplot(aes(x = date, y = new_cases)) +
+  geom_point(aes(color = location))
+```
+
+```{r}
+table(covid$location)
+```
+
+
+
+
+
+
+
+

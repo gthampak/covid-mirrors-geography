@@ -1,0 +1,141 @@
+---
+title: "penguin-pca"
+author: "Jared Mejia"
+date: "11/15/2021"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Penguin PCA for Classification
+
+https://towardsdatascience.com/dimensionality-reduction-does-pca-really-improve-classification-outcome-6e9ba21f0a32
+
+```{r}
+library(dplyr)
+
+head(penguins)
+```
+
+We will perform PCA analysis to try to predict penguin sex.
+
+```{r}
+penguin_data <- penguins %>%
+  transform(male = ifelse(sex == "male", 1, 0)) %>%
+  select(-sex)
+
+penguin_data <- as.data.frame(sapply(penguin_data, as.numeric))
+```
+
+```{r}
+# splitting training and testing dataset
+library(tidymodels)
+set.seed(47)
+pen_split <- initial_split(penguin_data, prop = 0.6)
+pen_train <- training(pen_split)
+pen_test <- testing(pen_split)
+```
+
+```{r}
+# building a nn
+library(neuralnet)
+n = names(pen_train)
+f = as.formula(paste("male ~", paste(n[!n %in% "male"], collapse = "+")))
+nn = neuralnet(f, pen_train, hidden = 4, linear.output = FALSE, threshold = 0.01)
+
+plot(nn, rep = "best")
+```
+
+```{r}
+# testing the result output
+
+nn.results = compute(nn, pen_test)
+
+results = data.frame(actual = pen_test$male, prediction = round(nn.results$net.result))
+
+nn_accuracy = sum(results$actual == results$prediction) / length(results$prediction)
+nn_accuracy
+```
+
+now using pca
+```{r}
+penguin_data_nn = data.frame(scale(penguin_data))
+index = sample( 1:nrow( penguin_data_nn), nrow( penguin_data_nn) * 0.6, replace = FALSE ) 
+trainset = penguin_data_nn[index,]
+test = penguin_data_nn[-index,]
+testset = test %>% select(-male)
+
+n = names(trainset)
+f = as.formula(paste("male ~", paste(n[!n %in% "male"], collapse="+")))
+nn = neuralnet(f, trainset, hidden = 4, linear.output = FALSE, threshold = 0.01)
+plot(nn, rep = "best")
+```
+
+```{r}
+nn.results = compute(nn, testset)
+results = data.frame(actual = ifelse(test$male > 0, 1, 0), prediction = round(nn.results$net.result))
+t = table(results)
+nn_accuracy = sum(results$actual == results$prediction) / length(results$prediction)
+nn_accuracy
+```
+
+```{r}
+# PCA
+pca_trainset = trainset %>% select(-male)
+pca_testset = testset
+pca = prcomp(pca_trainset)
+#pca = prcomp(pca_trainset, scale = T)
+
+# variance
+pr_var = (pca$sdev)^2
+
+# % of variance
+prop_varex = pr_var / sum(pr_var)
+
+plot(prop_varex, xlab = "Principal Component", ylab = "Proportion of Variance Explained", type="b")
+```
+
+
+```{r}
+plot(cumsum(prop_varex), xlab = "Principal Component",
+     ylab = "Cumulative Proportion of Variance Explained", type = "b")
+```
+
+```{r}
+train = data.frame(male = trainset$male, pca$x)
+t = as.data.frame(predict(pca, newdata = pca_testset))
+
+new_trainset = train[, 1:7]
+new_testset = t[, 1:6]
+
+# building new nn
+n = names(new_trainset)
+f = as.formula(paste("male ~", paste(n[!n %in% "male"], collapse="+")))
+nn = neuralnet(f, new_trainset, hidden=4, linear.output = FALSE, threshold = 0.01)
+
+# plot the nn
+plot(nn, rep = "best")
+
+```
+
+```{r}
+# testing the resulting output
+nn.results = compute(nn, new_testset)
+
+# results
+results = data.frame(actual = ifelse(test$male > 0, 1, 0), prediction = round(nn.results$net.result))
+
+pca_nn_accuracy = sum(results$actual == results$prediction) / length(results$prediction)
+pca_nn_accuracy
+
+```
+
+
+
+
+
+
+
+

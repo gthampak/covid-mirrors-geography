@@ -1,0 +1,13 @@
+name: NAsummary
+title: NAsummary
+username:
+account: arm-wong
+server: shinyapps.io
+hostUrl: https://api.shinyapps.io/v1
+appId: 5315424
+bundleId: 5363951
+url: https://arm-wong.shinyapps.io/NAsummary/
+when: 1639350384.53006
+lastSyncTime: 1639350384.53007
+asMultiple: FALSE
+asStatic: FALSE

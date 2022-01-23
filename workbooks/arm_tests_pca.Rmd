@@ -1,0 +1,215 @@
+---
+title: "arm_tests_pca"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(tidymodels)
+library(lubridate)
+```
+
+```{r}
+library(palmerpenguins)
+data("penguins")
+
+names(penguins)
+penguins_cor <- penguins %>% 
+  select("bill_length_mm", "bill_depth_mm", "flipper_length_mm", "body_mass_g") %>%
+  drop_na()
+         
+xs.z <- apply(penguins_cor, 2, scale) 
+
+pca <- princomp(xs.z)
+
+plot(pca)
+
+plot(as.data.frame(pca$scores))
+```
+
+```{r}
+covid <- read.csv("https://raw.githubusercontent.com/owid/covid-19-data/master/public/data/owid-covid-data.csv")
+
+vars <- names(covid)
+
+vars
+
+vars <- vars[! vars %in% c('date')]
+
+sum <- covid %>% group_by(date) %>% 
+  summarise(across(vars, ~ sum(is.na(.))))
+
+prop <- covid %>% group_by(date) %>% 
+  summarise(across(vars, funs(sum(is.na(.)) / length(.))))
+
+len_per_day <- covid %>% group_by(date) %>%
+  summarise(across(vars, length))
+
+lengthsummary <- len_per_day %>% 
+  pivot_longer(!date, names_to="variable") %>%
+  mutate(date=ymd(date))
+
+lengthsummary %>% filter(grepl('cases', variable)) %>% ggplot() + geom_line(aes(x=date, y=value, color=variable)) +ylab("no of countries reported")
+
+test <- covid %>% filter(date == "2020-01-01")
+
+NAsummary <- prop %>% 
+  pivot_longer(!date, names_to="variable") %>%
+  mutate(date=ymd(date))
+
+NAsummary %>% filter(grepl('vaccination', variable)) %>% ggplot() + geom_line(aes(x=date, y=value, color=variable)) +geom_vline(xintercept=ymd("2020-12-11"))  + geom_text(aes(x = ymd("2020-6-10"), y = 0.5, label = "Pfizer vaccine approved"))
+
+NAsummary %>% ggplot(aes(x=date, y=value, color=variable)) + 
+  geom_line() + 
+  theme(legend.position = "none")
+
+one_day <- covid %>% filter(date == "2021-12-11")
+
+data.frame(colSums(is.na(one_day)))
+
+```
+
+```{r}
+library(tidytext)
+
+replace_all_na <- function(covid_data) {
+  covid_data %>%
+    replace(is.na(.), 0)
+}
+
+one_day_prepped <- replace_all_na(one_day) %>%
+  filter_continents() %>%
+  filter_world()
+
+one_day_prepped %>% summarise_all(mean)
+
+ready <- one_day_prepped %>% select(!c(excess_mortality_cumulative, excess_mortality, excess_mortality_cumulative_per_million, excess_mortality_cumulative_absolute, reproduction_rate))
+
+pca_recipe <- recipe(~., data = ready) %>%
+  step_center(all_numeric()) %>%
+  step_scale(all_numeric()) %>%
+  step_pca(all_numeric(), id = "pca")
+
+pca_recipe
+
+pca_estimates <- prep(pca_recipe)
+
+juice(pca_estimates)
+
+juice(pca_estimates) %>%
+  ggplot(aes(PC1, PC2)) +
+  geom_point(aes(color = continent), alpha = 0.7, size = 2)+
+  labs(title="PCA from tidymodels") + 
+  xlim(-5, 5) + ylim(-5, 5) +
+  geom_smooth(method = "lm", se = FALSE)
+
+tidied_pca <- tidy(pca_estimates, 2)
+
+tidy_pca_loadings <- pca_estimates%>% 
+  tidy(id = "pca")
+
+tidy_pca_loadings
+
+tidy_pca_loadings %>%
+  filter(component %in% paste0("PC", 1:5)) %>%
+  mutate(component = fct_inorder(component)) %>%
+  ggplot(aes(value, terms, fill = terms)) +
+  geom_col(show.legend = FALSE) +
+  facet_wrap(~component, nrow = 1) +
+  labs(y = NULL)
+
+plot_loadings <- tidy_pca_loadings %>% 
+  filter(component %in% c("PC1")) %>% 
+  mutate(terms = tidytext::reorder_within(terms, 
+                                          abs(value), 
+                                          component)) %>% 
+  ggplot(aes(abs(value), terms, fill = value>0)) +
+  geom_col() +
+  facet_wrap( ~component, scales = "free_y") +
+  scale_y_reordered() + # appends ___ and then the facet at the end of each string
+  scale_fill_manual(values = c("deepskyblue4", "darkorange")) +
+  labs( x = "absolute value of contribution",
+        y = NULL,
+        fill = "Positive?",
+        title = "PCA Loadings Plot") +
+  theme_minimal()
+
+
+plot_loadings
+
+```
+```{r}
+replace_all_one <- function(covid_data) {
+  covid_data %>%
+    replace(is.na(.), 1)
+}
+
+all_days <- ymd(as.character(data.frame(table(covid_no_na$date))$Var1))
+
+days_with_vars <- all_days[-1:-100]
+
+
+covid_prepped <- replace_all_na(covid) %>%
+  filter_continents() %>%
+  filter_world()  %>% 
+  mutate(date=ymd(date))
+
+
+covid_ready <- covid_prepped %>% mutate(date=ymd(date)) %>% filter(date >= "2020-04-10")
+
+obs_per_day <- covid_prepped %>% filter(date == days_with_vars[55])
+
+obs_per_day %>% summarise_all(mean)
+  
+pca_recipe <- recipe(~., data = obs_per_day) %>%
+  step_center(all_numeric()) %>%
+  step_scale(all_numeric()) %>%
+  step_pca(all_numeric(), id = "pca")
+  
+pca_estimates <- prep(pca_recipe)
+
+start <- juice(pca_estimates)
+
+for (i in range(length(all_days))){
+  obs_per_day <- covid_no_na %>% filter(date == all_days[i])
+  
+  pca_recipe <- recipe(~., data = obs_per_day) %>%
+    step_center(all_numeric()) %>%
+    step_scale(all_numeric()) %>%
+    step_pca(all_numeric(), id = "pca")
+  
+  pca_estimates <- prep(pca_recipe)
+  
+  rbind()
+  
+}
+```
+
+```{r}
+covid_months <- covid_prepped %>%
+  mutate(month = format(date, "%m"), year = format(date, "%Y")) %>% filter(date >= "2020-12-16") %>%
+  group_by(month, year) %>% summarise_all(mean)
+
+covid_for_loop <- covid_prepped %>%
+  mutate(month = format(date, "%m"), year = format(date, "%Y")) %>% filter(date >= "2021-01-01")
+
+covid_for_loop$tests_units <- NULL
+covid_for_loop$total_boosters_per_hundred <- NULL
+
+one_month <- covid_for_loop %>% filter(month=="12")
+
+pca_recipe <- recipe(~., data = one_month) %>%
+  step_center(all_numeric()) %>%
+  step_scale(all_numeric()) %>%
+  step_pca(all_numeric(), id = "pca")
+
+one_month %>% summarise_all(mean)
+  
+pca_estimates <- prep(pca_recipe)
+
+juice(pca_estimates) %>% filter(location == "Afghanistan")
+
+
+```
+

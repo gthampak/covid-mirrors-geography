@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="" xml:lang="">
+  <head>
+    <title>Covid Mirrors Geography</title>
+    <meta charset="utf-8" />
+    <meta name="author" content="Arm, Jared, Guy" />
+    <script src="libs/header-attrs-2.11/header-attrs.js"></script>
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# Covid Mirrors Geography
+## Clustering Countries By Pandemic Numbers
+### Arm, Jared, Guy
+### Tuesday December 13th, 2021
+
+---
+
+
+
+# Motivation
+
+* Explore whether covid data is telling of
+  + geography (area, country, continent)
+  + country policies
+  + any other commonalities between countries in the same cluster (based on COVID-19 data)
+* Main Learning/Computational Methods
+  + Principal Component Analysis (PCA)
+  + Clustering
+* Inspiration: Genes mirror geography within Europe (Novembre et al.)
+
+&lt;p align="center"&gt;
+  &lt;img src="./gene_clustering.png", width="350"/&gt;
+&lt;/p&gt;
+
+---
+
+# Datasets
+
+* Primary Dataset
+  + Our World in Data (owid) COVID-19 dataset
+  
+* Supporting Datasets
+  + World Bank Open Data
+  + World Map and Coordinates
+  + gapminder dataset in R
+
+---
+
+# Our World in Data (owid) COVID-19 dataset
+
+* 130,000+ observations, 67 variables
+  + 237 locations (countries, continents, world)
+
+* Significant Variables
+  + confirmed cases
+  + comfirmed deaths
+  + excess mortality
+  + hospitalizations and intensive care unit statistics
+  + policy responses
+  + covid tests and test positivity
+  + vaccinations numbers
+  + country specific development indices
+  
+---
+
+# Our World in Data (owid) COVID-19 dataset
+  
+* Relevant variables gets updated daily (live data)
+
+* Data synthesized from many reputable sources such as:
+  + Johns Hopkins University's COVID-19 Data Repository by the Center for Systems Science and Engineering (CSSE)
+  + European Centre for Disease Prevention and Control (ECDC)
+  + Official National Reports
+  + United Nations
+  + World Bank
+  + Global Burden of Disease
+
+---
+
+# EDA - New Cases
+
+
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-2-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# EDA - Vaccinations
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-3-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Total Cases vs Total Deaths Over Time by Continent
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-4-1.gif" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Relationship Between Total Cases and Total Deaths Over Time (Static Summary)
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-5-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Total Cases Over Time by Country
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-6-1.gif" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Current Total Cases by Country
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-7-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Data Missingness 
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-8-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Data Missingness 
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-9-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Data Missingness Shiny App
+
+![](Shiny_App_Screenshot.png)
+
+Link to Shiny App: https://arm-wong.shinyapps.io/NAsummary/
+
+---
+
+# Why PCA? What is PCA?
+
+* Principal Component Analysis
+* Often used with large datasets with numeric variables
+* Reduce dimensionality
+  + combine and synthesize variables into less "components"
+  + Variables -&gt; Pincipal Components (linear combinations of variables)
+* Increase convenience in model building
+* Maximize variance (minimize information loss)
+
+- Shortcomings
+  + Difficult to interpret what these PCs actually mean
+  + Can only 'get a sense' of how variables contribute to models
+
+---
+
+### PCA Results for 2021-12-05
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-10-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Deep Dive into PC1 for 2021-12-05
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-11-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### PCA - Lack of Correlation
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-12-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Clustering Countries by PCA Variables
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-13-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# What if we did this for everyday?
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-14-1.gif" style="display: block; margin: auto;" /&gt;
+
+---
+
+# What if we only took scaled variables (per)
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-15-1.gif" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Extensions - World Bank Data
+
+* Can we learn more about these clusters?
+* Know countries in clusters are similar in some ways.
+
+* But how?
+  + Look at Principal Components
+  + Look at other indicators (World Bank Data)
+  
+---
+
+### Human Development Index (HDI) and Total Cases per Million
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-16-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### HDI and Total Cases Over Time
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-17-1.gif" style="display: block; margin: auto;" /&gt;
+
+---
+
+### HDI and Total Cases (Static Summary)
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-18-1.png" style="display: block; margin: auto;" /&gt;
+---
+
+### Tourism as measured by International Arrivals (2019)
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-19-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### Tourism by Continent
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-20-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+### GDP and Vaccination
+
+&lt;img src="presentation_files/figure-html/unnamed-chunk-21-1.png" style="display: block; margin: auto;" /&gt;
+
+---
+
+# Closing Thoughts
+
+* Covid mirrors geography (if you squint your eyes)
+
+&lt;p align="center"&gt;
+  &lt;img src="./covid_meme.jpg", width="400"/&gt;
+&lt;/p&gt;
+
+
+
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+(function() {
+  "use strict"
+  // Replace <script> tags in slides area to make them executable
+  var scripts = document.querySelectorAll(
+    '.remark-slides-area .remark-slide-container script'
+  );
+  if (!scripts.length) return;
+  for (var i = 0; i < scripts.length; i++) {
+    var s = document.createElement('script');
+    var code = document.createTextNode(scripts[i].textContent);
+    s.appendChild(code);
+    var scriptAttrs = scripts[i].attributes;
+    for (var j = 0; j < scriptAttrs.length; j++) {
+      s.setAttribute(scriptAttrs[j].name, scriptAttrs[j].value);
+    }
+    scripts[i].parentElement.replaceChild(s, scripts[i]);
+  }
+})();
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
