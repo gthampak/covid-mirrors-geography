@@ -2,6 +2,10 @@
 
 (inspired by Genes mirror geography within Europe; https://www.nature.com/articles/nature07331)
 
+link to final write up pdf: https://github.com/gthampak/covid-mirrors-geography/blob/main/workbooks/write%20up%20stuff/Write-Up.pdf (animations not shown).
+
+knit .Rmd file as html; link to .Rmd file: https://github.com/gthampak/covid-mirrors-geography/blob/main/workbooks/write%20up%20stuff/Write-Up.Rmd
+
 ## Possible Directions (last updated: 11/23/2021)
 
 ### things we can do
